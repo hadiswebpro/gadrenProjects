@@ -4,6 +4,7 @@ import { StorageManager } from "./storage.js";
 import { getTheme, getThemes } from "./theme.js";
 
 export function HomeManager() {
+
   const project = projectManager();
   const todo = toDoManager();
   const storage = StorageManager();
@@ -18,15 +19,17 @@ export function HomeManager() {
     ========================= */
 
   function showWelcome() {
+
     app.innerHTML = `
             <section class="welcome">
 
-                <h2>Welcome to Todo Garden</h2>
+                <h2>Welcome to Garden Projects</h2>
 
                 <p>
                     Organize your projects, manage your tasks,
                     and keep track of what matters.
                 </p>
+
 
                 <button class="start-btn">
                     Enter App
