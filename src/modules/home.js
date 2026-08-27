@@ -1,6 +1,7 @@
 import { projectManager } from "./project.js";
 import { toDoManager } from "./todo.js";
 import { StorageManager } from "./storage.js";
+import { getTheme, getThemes } from "./theme.js";
 
 export function HomeManager() {
   const project = projectManager();
@@ -125,10 +126,14 @@ export function HomeManager() {
 
     projects.forEach((projectData) => {
       const element = document.createElement("div");
+      const theme = getTheme(projectData.color) || getTheme("sage");
 
       element.classList.add("project-item");
 
       element.dataset.id = projectData.id;
+      element.style.setProperty("--project-color", theme.main);
+      element.style.setProperty("--project-color-light", theme.light);
+      element.style.setProperty("--project-color-dark", theme.dark);
 
       element.innerHTML = `
 
@@ -136,7 +141,7 @@ export function HomeManager() {
 
                     <span
                         class="project-color"
-                        style="background-color:${projectData.color}"
+                        style="background-color:${theme.main}"
                     ></span>
 
                     <span class="project-name">
@@ -216,10 +221,14 @@ export function HomeManager() {
     if (!selectedProject) return;
 
     const title = app.querySelector(".current-project");
+    const theme = getTheme(selectedProject.color) || getTheme("sage");
 
     title.innerHTML = `
 
-            <div class="project-heading">
+            <div
+                class="project-heading"
+                style="--project-color:${theme.main};--project-color-light:${theme.light};--project-color-dark:${theme.dark}"
+            >
 
                 <div>
 
@@ -351,6 +360,42 @@ export function HomeManager() {
   }
 
   /* =========================
+       THEME OPTIONS
+    ========================= */
+
+  function createThemeOptions(selectedTheme = "sage") {
+    return Object.entries(getThemes())
+      .map(([name, theme]) => `
+        <button
+            type="button"
+            class="theme-option ${name === selectedTheme ? "selected" : ""}"
+            data-theme="${name}"
+            style="--theme-color:${theme.main}"
+            title="${name}"
+            aria-label="${name}"
+        ></button>
+      `)
+      .join("");
+  }
+
+  function setupThemeOptions(form, selectedTheme) {
+    const hiddenInput = form.querySelector('[name="color"]');
+
+    form.querySelectorAll(".theme-option").forEach((button) => {
+      button.addEventListener("click", () => {
+        form.querySelectorAll(".theme-option").forEach((option) => {
+          option.classList.remove("selected");
+        });
+
+        button.classList.add("selected");
+        hiddenInput.value = button.dataset.theme;
+      });
+    });
+
+    hiddenInput.value = selectedTheme;
+  }
+
+  /* =========================
        ADD PROJECT FORM
     ========================= */
 
@@ -377,10 +422,14 @@ export function HomeManager() {
             <label>
                 Project color
 
+                <div class="theme-options">
+                    ${createThemeOptions()}
+                </div>
+
                 <input
-                    type="color"
+                    type="hidden"
                     name="color"
-                    value="#718c68"
+                    value="sage"
                 >
             </label>
 
@@ -402,6 +451,8 @@ export function HomeManager() {
         `;
 
     app.querySelector(".app-header").appendChild(form);
+
+    setupThemeOptions(form, "sage");
 
     form.addEventListener("submit", (event) => {
       event.preventDefault();
@@ -467,8 +518,12 @@ export function HomeManager() {
             <label>
                 Project color
 
+                <div class="theme-options">
+                    ${createThemeOptions(selectedProject.color)}
+                </div>
+
                 <input
-                    type="color"
+                    type="hidden"
                     name="color"
                     value="${selectedProject.color}"
                 >
@@ -492,6 +547,8 @@ export function HomeManager() {
         `;
 
     app.querySelector(".app-header").appendChild(form);
+
+    setupThemeOptions(form, selectedProject.color);
 
     form.addEventListener("submit", (event) => {
       event.preventDefault();
@@ -843,7 +900,7 @@ export function HomeManager() {
 
   function initialize() {
     if (projects.length === 0) {
-      const defaultProject = project.makeProject("Default", "#718c68");
+      const defaultProject = project.makeProject("Default", "sage");
 
       projects.push(defaultProject);
 
