@@ -8,11 +8,9 @@
     "dev": "webpack serve --config webpack.dev.js",
     "build": "webpack --config webpack.prod.js"
   },
-  
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "devDependencies": {
     "css-loader": "^7.1.4",
     "html-webpack-plugin": "^5.6.8",

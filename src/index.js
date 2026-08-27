@@ -1,5 +1,5 @@
 import "./style.css";
-import { HomeManager } from "./home.js";
+import { HomeManager } from "./modules/home.js";
 
 const home = HomeManager();
 
