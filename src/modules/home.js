@@ -31,6 +31,7 @@ export function HomeManager() {
             <p>Organize your day and your projects.</p>
           </div>
           <div class="app-actions">
+            <button class="projects-toggle" type="button" aria-expanded="false">Projects</button>
             <input type="search" class="search-input" placeholder="Search todos...">
             <button class="add-project">+ Project</button>
           </div>
@@ -40,6 +41,7 @@ export function HomeManager() {
             <div class="projects-header"><h3>Projects</h3></div>
             <div class="projects"></div>
           </aside>
+          <div class="projects-backdrop" aria-hidden="true"></div>
           <main class="todos-section">
             <div class="current-project"></div>
             <div class="todos"></div>
@@ -112,6 +114,18 @@ export function HomeManager() {
     return close;
   }
 
+  function setProjectsMenu(open) {
+    const sidebar = app.querySelector(".projects-sidebar");
+    const backdrop = app.querySelector(".projects-backdrop");
+    const toggle = app.querySelector(".projects-toggle");
+    if (!sidebar || !backdrop || !toggle) return;
+
+    sidebar.classList.toggle("is-open", open);
+    backdrop.classList.toggle("is-visible", open);
+    toggle.setAttribute("aria-expanded", String(open));
+    document.body.classList.toggle("projects-menu-open", open);
+  }
+
   function renderProjects() {
     const container = app.querySelector(".projects");
     if (!container) return;
@@ -122,6 +136,7 @@ export function HomeManager() {
       const theme = getTheme(projectData.color) || getTheme("sage");
       element.className = "project-item";
       element.dataset.id = projectData.id;
+      element.classList.toggle("is-current", projectData.id === currentProjectId);
       element.style.setProperty("--project-color", theme.main);
       element.style.setProperty("--project-color-light", theme.light);
       element.style.setProperty("--project-color-dark", theme.dark);
@@ -145,7 +160,9 @@ export function HomeManager() {
     const selectedProject = project.openProject(projects, id);
     if (!selectedProject) return;
     currentProjectId = selectedProject.id;
+    renderProjects();
     renderCurrentProject();
+    setProjectsMenu(false);
   }
 
   function deleteProject(id) {
@@ -182,7 +199,11 @@ export function HomeManager() {
     const theme = getTheme(selectedProject.color) || getTheme("sage");
     title.innerHTML = `
       <div class="project-heading" style="--project-color:${theme.main};--project-color-light:${theme.light};--project-color-dark:${theme.dark}">
-        <div><h2>${selectedProject.name}</h2><span>${selectedProject.todos.length} tasks</span></div>
+        <div>
+          <span class="current-project-label">Project</span>
+          <h2>${selectedProject.name}</h2>
+          <span>${selectedProject.todos.length} tasks</span>
+        </div>
       </div>`;
     renderTodos(selectedProject.todos);
   }
@@ -208,8 +229,10 @@ export function HomeManager() {
           <span>${todoData.dueDate}</span>
         </div>
         <span class="priority">${todoData.priority}</span>
-        <button class="edit-todo" type="button">Edit</button>
-        <button class="delete-todo" type="button">Delete</button>`;
+        <div class="todo-actions">
+          <button class="edit-todo" type="button">Edit</button>
+          <button class="delete-todo" type="button">Delete</button>
+        </div>`;
       setupTodoEvents(element, todoData.id);
       container.appendChild(element);
     });
@@ -404,6 +427,11 @@ export function HomeManager() {
     app.querySelector(".search-input").addEventListener("input", (event) => searchTodos(event.target.value));
     app.querySelector(".add-project").addEventListener("click", showAddProjectForm);
     app.querySelector(".add-todo").addEventListener("click", showAddTodoForm);
+    app.querySelector(".projects-toggle").addEventListener("click", () => {
+      const sidebar = app.querySelector(".projects-sidebar");
+      setProjectsMenu(!sidebar.classList.contains("is-open"));
+    });
+    app.querySelector(".projects-backdrop").addEventListener("click", () => setProjectsMenu(false));
   }
 
   function initialize() {
