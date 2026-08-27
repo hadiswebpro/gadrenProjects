@@ -30,7 +30,6 @@ export function HomeManager() {
                     and keep track of what matters.
                 </p>
 
-
                 <button class="start-btn">
                     Enter App
                 </button>
@@ -76,21 +75,17 @@ export function HomeManager() {
 
                 </header>
 
-
                 <div class="app-layout">
 
                     <aside class="projects-sidebar">
 
                         <div class="projects-header">
-
                             <h3>Projects</h3>
-
                         </div>
 
                         <div class="projects"></div>
 
                     </aside>
-
 
                     <main class="todos-section">
 
@@ -116,6 +111,87 @@ export function HomeManager() {
     }
 
     setupAppEvents();
+  }
+
+  /* =========================
+       MESSAGE MODAL
+    ========================= */
+
+  function showMessage({
+    title,
+    message,
+    confirmText = "Delete",
+    cancelText = "Cancel",
+    onConfirm = null,
+    showCancel = true,
+  }) {
+    const existingModal = app.querySelector(".confirm-overlay");
+
+    if (existingModal) {
+      existingModal.remove();
+    }
+
+    const overlay = document.createElement("div");
+
+    overlay.classList.add("confirm-overlay");
+
+    overlay.innerHTML = `
+      <div class="confirm-box" role="dialog" aria-modal="true">
+
+        <h3>${title}</h3>
+
+        <p>${message}</p>
+
+        <div class="confirm-actions">
+
+          ${showCancel ? `
+            <button type="button" class="confirm-cancel">
+              ${cancelText}
+            </button>
+          ` : ""}
+
+          <button type="button" class="confirm-delete">
+            ${confirmText}
+          </button>
+
+        </div>
+
+      </div>
+    `;
+
+    app.appendChild(overlay);
+
+    const closeModal = () => {
+      overlay.remove();
+    };
+
+    const confirmButton = overlay.querySelector(".confirm-delete");
+    const cancelButton = overlay.querySelector(".confirm-cancel");
+
+    confirmButton.addEventListener("click", () => {
+      if (onConfirm) {
+        onConfirm();
+      }
+
+      closeModal();
+    });
+
+    if (cancelButton) {
+      cancelButton.addEventListener("click", closeModal);
+    }
+
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) {
+        closeModal();
+      }
+    });
+
+    document.addEventListener("keydown", function handleEscape(event) {
+      if (event.key === "Escape") {
+        closeModal();
+        document.removeEventListener("keydown", handleEscape);
+      }
+    });
   }
 
   /* =========================
@@ -193,21 +269,49 @@ export function HomeManager() {
   }
 
   function deleteProject(id) {
-    if (projects.length === 1) {
-      alert("You need at least one project.");
+    const selectedProject = project.openProject(projects, id);
+
+    if (!selectedProject) return;
+
+    if (selectedProject.isDefault) {
+      showMessage({
+        title: "Default project",
+        message: "The default project cannot be deleted.",
+        confirmText: "Got it",
+        showCancel: false,
+      });
+
       return;
     }
 
-    projects = project.deleteProject(projects, id);
+    if (projects.length === 1) {
+      showMessage({
+        title: "Cannot delete project",
+        message: "You need at least one project.",
+        confirmText: "Got it",
+        showCancel: false,
+      });
 
-    if (!projects.some((projectData) => projectData.id === currentProjectId)) {
-      currentProjectId = projects[0].id;
+      return;
     }
 
-    storage.saveData(projects);
+    showMessage({
+      title: "Delete project?",
+      message: `Are you sure you want to delete "${selectedProject.name}"? All todos inside this project will also be deleted.`,
+      confirmText: "Delete Project",
+      onConfirm: () => {
+        projects = project.deleteProject(projects, id);
 
-    renderProjects();
-    renderCurrentProject();
+        if (!projects.some((projectData) => projectData.id === currentProjectId)) {
+          currentProjectId = projects[0]?.id || null;
+        }
+
+        storage.saveData(projects);
+
+        renderProjects();
+        renderCurrentProject();
+      },
+    });
   }
 
   /* =========================
@@ -322,9 +426,7 @@ export function HomeManager() {
 
   function setupTodoEvents(element, id) {
     const checkbox = element.querySelector(".todo-checkbox");
-
     const editButton = element.querySelector(".edit-todo");
-
     const deleteButton = element.querySelector(".delete-todo");
 
     checkbox.addEventListener("change", () => {
@@ -354,12 +456,23 @@ export function HomeManager() {
 
     if (!selectedProject) return;
 
-    selectedProject.todos = todo.deleteToDo(selectedProject.todos, id);
+    const selectedTodo = todo.openToDo(selectedProject.todos, id);
 
-    storage.saveData(projects);
+    if (!selectedTodo) return;
 
-    renderCurrentProject();
-    renderProjects();
+    showMessage({
+      title: "Delete todo?",
+      message: `Are you sure you want to delete "${selectedTodo.title}"?`,
+      confirmText: "Delete Todo",
+      onConfirm: () => {
+        selectedProject.todos = todo.deleteToDo(selectedProject.todos, id);
+
+        storage.saveData(projects);
+
+        renderCurrentProject();
+        renderProjects();
+      },
+    });
   }
 
   /* =========================
@@ -421,7 +534,6 @@ export function HomeManager() {
                 >
             </label>
 
-
             <label>
                 Project color
 
@@ -435,7 +547,6 @@ export function HomeManager() {
                     value="sage"
                 >
             </label>
-
 
             <div class="form-actions">
 
@@ -461,13 +572,10 @@ export function HomeManager() {
       event.preventDefault();
 
       const formData = new FormData(form);
-
       const name = formData.get("name").trim();
-
       const color = formData.get("color");
 
       addProject(name, color);
-
       form.remove();
     });
 
@@ -479,8 +587,9 @@ export function HomeManager() {
   function addProject(name, color) {
     const newProject = project.makeProject(name, color);
 
-    projects.push(newProject);
+    newProject.isDefault = false;
 
+    projects.push(newProject);
     currentProjectId = newProject.id;
 
     storage.saveData(projects);
@@ -517,7 +626,6 @@ export function HomeManager() {
                 >
             </label>
 
-
             <label>
                 Project color
 
@@ -531,7 +639,6 @@ export function HomeManager() {
                     value="${selectedProject.color}"
                 >
             </label>
-
 
             <div class="form-actions">
 
@@ -557,9 +664,7 @@ export function HomeManager() {
       event.preventDefault();
 
       const data = new FormData(form);
-
       const name = data.get("name").trim();
-
       const color = data.get("color");
 
       project.editProject(projects, id, name, color);
@@ -594,7 +699,6 @@ export function HomeManager() {
 
             <h3>Add Todo</h3>
 
-
             <label>
                 Title
 
@@ -605,7 +709,6 @@ export function HomeManager() {
                 >
             </label>
 
-
             <label>
                 Description
 
@@ -614,7 +717,6 @@ export function HomeManager() {
                     required
                 ></textarea>
             </label>
-
 
             <label>
                 Due date
@@ -625,7 +727,6 @@ export function HomeManager() {
                     required
                 >
             </label>
-
 
             <label>
                 Priority
@@ -651,7 +752,6 @@ export function HomeManager() {
 
             </label>
 
-
             <label>
                 Notes
 
@@ -659,7 +759,6 @@ export function HomeManager() {
                     name="notes"
                 ></textarea>
             </label>
-
 
             <div class="form-actions">
 
@@ -736,7 +835,6 @@ export function HomeManager() {
 
             <h3>Edit Todo</h3>
 
-
             <label>
                 Title
 
@@ -748,7 +846,6 @@ export function HomeManager() {
                 >
             </label>
 
-
             <label>
                 Description
 
@@ -757,7 +854,6 @@ export function HomeManager() {
                     required
                 >${selectedTodo.description}</textarea>
             </label>
-
 
             <label>
                 Due date
@@ -769,7 +865,6 @@ export function HomeManager() {
                     required
                 >
             </label>
-
 
             <label>
                 Priority
@@ -804,7 +899,6 @@ export function HomeManager() {
 
             </label>
 
-
             <label>
                 Notes
 
@@ -812,7 +906,6 @@ export function HomeManager() {
                     name="notes"
                 >${selectedTodo.notes}</textarea>
             </label>
-
 
             <div class="form-actions">
 
@@ -905,11 +998,22 @@ export function HomeManager() {
     if (projects.length === 0) {
       const defaultProject = project.makeProject("Default", "sage");
 
+      defaultProject.isDefault = true;
+
       projects.push(defaultProject);
 
       currentProjectId = defaultProject.id;
 
       storage.saveData(projects);
+    } else {
+      const hasDefaultProject = projects.some(
+        (projectData) => projectData.isDefault,
+      );
+
+      if (!hasDefaultProject) {
+        projects[0].isDefault = true;
+        storage.saveData(projects);
+      }
     }
 
     showWelcome();
